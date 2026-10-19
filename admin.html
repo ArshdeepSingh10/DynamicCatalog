@@ -1,0 +1,6 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin</title><link rel="stylesheet" href="style.css"></head><body>
+<div id="login" class="box"><h2>Admin login</h2><input id="pw" type="password" placeholder="Password"><button id="lb" class="btn">Login</button><p id="le" class="err"></p></div>
+<div id="app" hidden><header><b id="sn"></b><span><button class="btn" id="addb">+ Add</button> <button class="btn alt" id="exp">Export CSV</button> <button class="btn alt" id="tpl">Template</button> <label class="btn alt">Import<input id="imp" type="file" accept=".csv,.xlsx,.xls" hidden></label> <button class="btn alt" id="lo">Logout</button></span></header>
+<section id="st" class="stats"></section><div class="bar"><input id="aq" placeholder="Search products" style="flex:1"></div><div class="scroll"><table id="tb"></table></div></div>
+<dialog id="fm"></dialog><dialog id="pv"></dialog><div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><script src="config.js"></script><script src="admin.js"></script></body></html>

@@ -1,0 +1,8 @@
+window.CONFIG={
+  API_URL:'PASTE_YOUR_WEB_APP_URL_HERE',
+  CLOUD_NAME:'PASTE_CLOUDINARY_CLOUD_NAME',
+  UPLOAD_PRESET:'PASTE_UNSIGNED_PRESET_NAME',
+  SHOP_NAME:'My Electronics Shop',
+  WHATSAPP:'919876543210',   // country code + number, no + or spaces
+  CURRENCY:'₹'
+};
