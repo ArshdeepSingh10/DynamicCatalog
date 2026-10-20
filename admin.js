@@ -18,7 +18,7 @@ function start(){$('#login').hidden=true;$('#app').hidden=false;$('#sn').textCon
 async function refresh(){const d=await api('stats');prods=d.products;const s=d.stats;
   $('#st').innerHTML=`<div><b>${s.total}</b>Products</div><div><b>${s.low}</b>Low stock</div><div><b>${s.out}</b>Out of stock</div>`+Object.entries(s.categories).map(([k,v])=>`<div><b>${v}</b>${esc(k)}</div>`).join('');draw();}
 function draw(){const q=$('#aq').value.toLowerCase();
-  $('#tb').innerHTML='<tr><th></th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr>'+prods.filter(p=>(p.name+p.brand+p.category+p.model).toLowerCase().includes(q)).map(p=>
+  $('#tb').innerHTML='<tr><th></th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr>'+prods.filter(p=>[p.name,p.brand,p.category,p.model].join(' ').toLowerCase().includes(q)).map(p=>
   `<tr><td>${p.images[0]?`<img src="${esc(p.images[0].replace('/upload/','/upload/f_auto,q_auto,w_80/'))}" width="40">`:''}</td><td>${esc(p.name)}<br><small>${esc(p.brand)}</small></td><td>${esc(p.category)}</td><td>${p.discountPrice||p.price}</td><td>${p.stock}</td>
   <td><button class="btn alt" data-t="${esc(p.id)}">${esc(p.status)}</button></td><td><button class="btn alt" data-e="${esc(p.id)}">Edit</button> <button class="btn red" data-d="${esc(p.id)}">Delete</button></td></tr>`).join('');}
 $('#aq').oninput=draw;
