@@ -1,6 +1,6 @@
 const norm=s=>String(s??'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ');
 const match=(p,q)=>{const h=norm([p.name,p.brand,p.model,p.category].join(' ')),t=norm(q).split(' ').filter(Boolean);return t.every(w=>h.includes(w));};
-const C=CONFIG,$=s=>document.querySelector(s);let prods=[],imgs=[],fresh=[],editId=null,saved=false,uploading=0;
+const C=CONFIG,$=s=>document.querySelector(s);let cats=[],catF='',prods=[],imgs=[],fresh=[],editId=null,saved=false,uploading=0;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const HD=['ID','Name','Category','Brand','Model','Price','Discount Price','Stock','Description','Specifications','Image URLs','Image Public IDs','Featured','Status'];
 let tt;function toast(m,bad){const t=$('#toast');try{t.hidePopover();}catch(e){}(document.querySelector('dialog[open]')||document.body).append(t);
@@ -18,9 +18,11 @@ $('#pw').onkeydown=e=>{if(e.key==='Enter')$('#lb').click();};
 $('#lo').onclick=()=>{sessionStorage.removeItem('tok');location.reload();};
 function start(){$('#login').hidden=true;$('#app').hidden=false;$('#sn').textContent=C.SHOP_NAME+' – Admin';refresh().catch(e=>toast(e.message,1));}
 async function refresh(){const d=await api('stats');prods=d.products;const s=d.stats;
-  $('#st').innerHTML=`<div><b>${s.total}</b>Products</div><div><b>${s.low}</b>Low stock</div><div><b>${s.out}</b>Out of stock</div>`+Object.entries(s.categories).map(([k,v])=>`<div><b>${v}</b>${esc(k)}</div>`).join('');draw();}
+  cats=Object.entries(s.categories).sort((x,y)=>y[1]-x[1]);
+  $('#st').innerHTML=`<div><b>${s.total}</b>Products</div><div><b>${s.low}</b>Low stock</div><div><b>${s.out}</b>Out of stock</div><button class="cc" id="cats"><b>${cats.length}</b>Categories · View all</button>`;
+  $('#cats').onclick=openCats;if(catF&&!cats.some(c=>c[0]===catF))catF='';setCat(catF);}
 const money=n=>C.CURRENCY+Number(n).toLocaleString('en-IN');
-function draw(){const l=prods.filter(p=>match(p,$('#aq').value));
+function draw(){const l=prods.filter(p=>(!catF||(p.category||'Uncategorized')===catF)&&match(p,$('#aq').value));
   $('#tb').innerHTML=l.length?'<thead><tr><th></th><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead><tbody>'+l.map(p=>
   `<tr><td class="im">${p.images[0]?`<img src="${esc(p.images[0].replace('/upload/','/upload/f_auto,q_auto,w_100/'))}" alt="">`:''}</td><td class="pn"><b>${esc(p.name)}</b><small>${esc(p.brand)}</small></td><td data-l="Category">${esc(p.category)}</td><td data-l="Price">${money(p.discountPrice||p.price)}</td><td data-l="Stock"><span class="pill ${p.stock<=0?'r':p.stock<5?'y':'g'}">${p.stock}</span></td>
   <td data-l="Status"><button class="pill ${p.status==='Active'?'g':''}" data-t="${esc(p.id)}" title="Click to change">${esc(p.status)}</button></td><td class="ac"><button class="btn alt" data-e="${esc(p.id)}">Edit</button> <button class="btn red" data-d="${esc(p.id)}">Delete</button></td></tr>`).join('')+'</tbody>':'<tbody><tr><td class="msg">No products yet. Click “Add product” to create one.</td></tr></tbody>';}
@@ -90,3 +92,9 @@ $('#imp').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)r
 if(sessionStorage.tok)start();
 
 document.querySelectorAll('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target===d)d.close();}));
+
+function setCat(c){catF=c;const f=$('#af');f.hidden=!c;f.innerHTML=c?`${esc(c)} <button aria-label="Clear category filter">×</button>`:'';if(c)f.querySelector('button').onclick=()=>setCat('');draw();}
+function openCats(){const d=$('#cd');
+  d.innerHTML=`<div class="dp"><h3>Categories (${cats.length})</h3><input id="cq" class="s" type="search" placeholder="Search categories" style="width:100%"><div id="cl" class="cl"></div></div>`;
+  const paint=()=>{const q=$('#cq').value.toLowerCase();$('#cl').innerHTML='<button class="cr" data-c=""><span>All products</span></button>'+(cats.filter(c=>c[0].toLowerCase().includes(q)).map(c=>`<button class="cr" data-c="${esc(c[0])}"><span>${esc(c[0])}</span><span class="pill">${c[1]}</span></button>`).join('')||'<p class="mu">No category found.</p>');};
+  paint();$('#cq').oninput=paint;$('#cl').onclick=e=>{const b=e.target.closest('button');if(b){setCat(b.dataset.c);d.close();}};d.showModal();}
