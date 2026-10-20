@@ -19,26 +19,28 @@ $('#lo').onclick=()=>{sessionStorage.removeItem('tok');location.reload();};
 function start(){$('#login').hidden=true;$('#app').hidden=false;$('#sn').textContent=C.SHOP_NAME+' – Admin';refresh().catch(e=>toast(e.message,1));}
 async function refresh(){const d=await api('stats');prods=d.products;const s=d.stats;
   $('#st').innerHTML=`<div><b>${s.total}</b>Products</div><div><b>${s.low}</b>Low stock</div><div><b>${s.out}</b>Out of stock</div>`+Object.entries(s.categories).map(([k,v])=>`<div><b>${v}</b>${esc(k)}</div>`).join('');draw();}
-function draw(){const q=$('#aq').value.toLowerCase();
-  $('#tb').innerHTML='<tr><th></th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr>'+prods.filter(p=>match(p,q)).map(p=>
-  `<tr><td>${p.images[0]?`<img src="${esc(p.images[0].replace('/upload/','/upload/f_auto,q_auto,w_80/'))}" width="40">`:''}</td><td>${esc(p.name)}<br><small>${esc(p.brand)}</small></td><td>${esc(p.category)}</td><td>${p.discountPrice||p.price}</td><td>${p.stock}</td>
-  <td><button class="btn alt" data-t="${esc(p.id)}">${esc(p.status)}</button></td><td><button class="btn alt" data-e="${esc(p.id)}">Edit</button> <button class="btn red" data-d="${esc(p.id)}">Delete</button></td></tr>`).join('');}
+const money=n=>C.CURRENCY+Number(n).toLocaleString('en-IN');
+function draw(){const l=prods.filter(p=>match(p,$('#aq').value));
+  $('#tb').innerHTML=l.length?'<thead><tr><th></th><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead><tbody>'+l.map(p=>
+  `<tr><td class="im">${p.images[0]?`<img src="${esc(p.images[0].replace('/upload/','/upload/f_auto,q_auto,w_100/'))}" alt="">`:''}</td><td class="pn"><b>${esc(p.name)}</b><small>${esc(p.brand)}</small></td><td data-l="Category">${esc(p.category)}</td><td data-l="Price">${money(p.discountPrice||p.price)}</td><td data-l="Stock"><span class="pill ${p.stock<=0?'r':p.stock<5?'y':'g'}">${p.stock}</span></td>
+  <td data-l="Status"><button class="pill ${p.status==='Active'?'g':''}" data-t="${esc(p.id)}" title="Click to change">${esc(p.status)}</button></td><td class="ac"><button class="btn alt" data-e="${esc(p.id)}">Edit</button> <button class="btn red" data-d="${esc(p.id)}">Delete</button></td></tr>`).join('')+'</tbody>':'<tbody><tr><td class="msg">No products yet. Click “Add product” to create one.</td></tr></tbody>';}
 $('#aq').oninput=draw;
 $('#tb').onclick=e=>{const b=e.target.closest('button');if(!b)return;const id=b.dataset.t||b.dataset.e||b.dataset.d,p=prods.find(x=>x.id===id);
   if(b.dataset.t)go(b,async()=>{await api('toggleStatus',{id});toast('Status changed');await refresh();});
   if(b.dataset.e)openForm(p);
-  if(b.dataset.d&&confirm(`Delete "${p.name}" and all its images? This cannot be undone.`))go(b,async()=>{await api('deleteProduct',{id});toast('Deleted');await refresh();});};
+  if(b.dataset.d)ask('Delete this product?',`“${p.name}” and all its images will be removed permanently.`,'Delete product').then(ok=>ok&&go(b,async()=>{await api('deleteProduct',{id});toast('Product deleted');await refresh();}));};
+function ask(title,msg,okLabel){return new Promise(res=>{const d=$('#cf');let r=false;d.innerHTML=`<div class="dp cfm"><h3>${esc(title)}</h3><p>${esc(msg)}</p><div class="ft"><button class="btn alt" id="cn">Cancel</button><button class="btn red" id="ck">${esc(okLabel)}</button></div></div>`;d.onclose=()=>res(r);$('#ck').onclick=()=>{r=true;d.close();};$('#cn').onclick=()=>d.close();d.showModal();$('#cn').focus();});}
 $('#addb').onclick=()=>openForm(null);
 const FL=[['name','Name'],['category','Category'],['brand','Brand'],['model','Model'],['price','Price','number'],['discountPrice','Discount Price','number'],['stock','Stock','number']];
 function openForm(p){
   editId=p?p.id:null;saved=false;fresh=[];imgs=p?p.images.map((u,i)=>({url:u,pid:p.publicIds[i]})):[];
-  $('#fm').innerHTML=`<h3>${p?'Edit':'Add'} product</h3><div class="fg">${FL.map(f=>`<label>${f[1]}<input id="f_${f[0]}" type="${f[2]||'text'}" min="0" value="${esc(p?p[f[0]]||'':'')}"></label>`).join('')}
+  $('#fm').innerHTML=`<div class="dp"><h3>${p?'Edit':'Add'} product</h3><div class="fg">${FL.map(f=>`<label>${f[1]}<input id="f_${f[0]}" type="${f[2]||'text'}" min="0" value="${esc(p?p[f[0]]||'':'')}"></label>`).join('')}
   <label>Featured<select id="f_featured"><option>No</option><option ${p&&p.featured?'selected':''}>Yes</option></select></label>
   <label>Status<select id="f_status"><option>Active</option><option ${p&&p.status==='Hidden'?'selected':''}>Hidden</option></select></label>
   <label class="w">Description<textarea id="f_description" rows="3">${esc(p?p.description:'')}</textarea></label></div>
   <h4>Specifications</h4><div id="sp"></div><button class="btn alt" id="addsp">+ Row</button><h4>Images</h4>
   <div id="dz">Drag images here or click to choose (max 5 MB each)<input id="fi" type="file" accept="image/*" multiple hidden></div><div id="th"></div>
-  <p><button class="btn" id="sv">Save</button> <button class="btn alt" id="cx">Cancel</button></p>`;
+  <div class="ft"><button class="btn alt" id="cx">Cancel</button><button class="btn" id="sv">Save product</button></div></div>`;
   Object.entries(p?p.specs:{}).forEach(([k,v])=>spRow(k,v));if(!p)spRow('','');
   $('#addsp').onclick=()=>spRow('','');drawImgs();
   const dz=$('#dz');dz.onclick=()=>$('#fi').click();$('#fi').onchange=e=>addFiles(e.target.files);
@@ -81,8 +83,10 @@ $('#imp').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)r
       if(!String(r.Name).trim())errs.push(`Row ${i+1}: Name missing`);if(isNaN(Number(r.Price))||r.Price==='')errs.push(`Row ${i+1}: Price invalid`);
       if(im.length!==ids.length)errs.push(`Row ${i+1}: image URLs/IDs count differ`);
       rows.push({id:String(r.ID||''),name:r.Name,category:r.Category,brand:r.Brand,model:r.Model,price:r.Price,discountPrice:r['Discount Price'],stock:r.Stock,description:r.Description,specs:sp,images:im,publicIds:ids,featured:r.Featured,status:r.Status});});
-    $('#pv').innerHTML=`<h3>Import preview: ${rows.length} rows</h3>${errs.length?`<p class="err">${errs.slice(0,15).map(esc).join('<br>')}</p>`:'<p>All rows valid.</p>'}<div class="scroll"><table>${rows.slice(0,10).map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.category)}</td><td>${esc(r.price)}</td><td>${esc(r.stock)}</td></tr>`).join('')}</table></div>
-    <button class="btn" id="ap" ${errs.length||!rows.length?'disabled':''}>Apply import</button> <button class="btn alt" onclick="$('#pv').close()">Cancel</button>`;
+    $('#pv').innerHTML=`<div class="dp"><h3>Import preview: ${rows.length} rows</h3>${errs.length?`<p class="err">${errs.slice(0,15).map(esc).join('<br>')}</p>`:'<p>All rows valid.</p>'}<div class="scroll"><table>${rows.slice(0,10).map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.category)}</td><td>${esc(r.price)}</td><td>${esc(r.stock)}</td></tr>`).join('')}</table></div>
+    <div class="ft"><button class="btn alt" onclick="$('#pv').close()">Cancel</button><button class="btn" id="ap" ${errs.length||!rows.length?'disabled':''}>Apply import</button></div></div>`;
     $('#ap').onclick=ev=>go(ev.target,async()=>{const r=await api('bulkImport',{rows});$('#pv').close();toast(`Added ${r.added}, updated ${r.updated}`);await refresh();});$('#pv').showModal();
   }catch(x){toast('Could not read file: '+x.message,1);}};
 if(sessionStorage.tok)start();
+
+document.querySelectorAll('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target===d)d.close();}));
