@@ -14,7 +14,7 @@ $('#lb').onclick=e=>go(e.target,async()=>{$('#le').textContent='';
     if(!d.ok)throw new Error(d.error);sessionStorage.tok=d.token;start();}catch(x){$('#le').textContent=x.message;}});
 $('#pw').onkeydown=e=>{if(e.key==='Enter')$('#lb').click();};
 $('#lo').onclick=()=>{sessionStorage.removeItem('tok');location.reload();};
-function start(){$('#login').hidden=true;$('#app').hidden=false;$('#sn').textContent=C.SHOP_NAME+' – Admin';refresh();}
+function start(){$('#login').hidden=true;$('#app').hidden=false;$('#sn').textContent=C.SHOP_NAME+' – Admin';refresh().catch(e=>toast(e.message,1));}
 async function refresh(){const d=await api('stats');prods=d.products;const s=d.stats;
   $('#st').innerHTML=`<div><b>${s.total}</b>Products</div><div><b>${s.low}</b>Low stock</div><div><b>${s.out}</b>Out of stock</div>`+Object.entries(s.categories).map(([k,v])=>`<div><b>${v}</b>${esc(k)}</div>`).join('');draw();}
 function draw(){const q=$('#aq').value.toLowerCase();
