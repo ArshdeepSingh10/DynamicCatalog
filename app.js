@@ -15,7 +15,7 @@ function opts(sel,label,arr){const v=sel.value;sel.innerHTML=`<option value="">$
 function filters(){opts($('#cat'),'All categories',P.map(p=>p.category));opts($('#br'),'All brands',P.map(p=>p.brand));}
 function render(){
   const q=$('#q').value.toLowerCase(),c=$('#cat').value,b=$('#br').value,mn=+$('#mn').value||0,mx=+$('#mx').value||1e12,so=$('#so').value;
-  let l=P.filter(p=>(!q||(p.name+p.brand+p.model+p.category).toLowerCase().includes(q))&&(!c||p.category===c)&&(!b||p.brand===b)&&eff(p)>=mn&&eff(p)<=mx);
+  let l=P.filter(p=>(!q||[p.name,p.brand,p.model,p.category].join(' ').toLowerCase().includes(q))&&(!c||p.category===c)&&(!b||p.brand===b)&&eff(p)>=mn&&eff(p)<=mx);
   if(so==='pa')l.sort((a,b)=>eff(a)-eff(b));if(so==='pd')l.sort((a,b)=>eff(b)-eff(a));if(so==='n')l.sort((a,b)=>a.name.localeCompare(b.name));
   $('#g').innerHTML=l.length?l.map(p=>`<div class="card" onclick="openP('${esc(p.id)}')">${p.stock<=0?'<span class="badge">Out of stock</span>':''}${p.images[0]?`<img loading="lazy" src="${esc(img(p.images[0],400))}" alt="">`:'<div class="ph"></div>'}<div><b>${esc(p.name)}</b><br><small>${esc(p.brand)}</small><br><span class="price">${money(eff(p))}</span>${p.discountPrice>0?`<span class="old">${money(p.price)}</span>`:''}</div></div>`).join(''):'<div class="msg">No products found.</div>';
 }
