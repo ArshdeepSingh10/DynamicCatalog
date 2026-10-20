@@ -1,7 +1,9 @@
 const C=CONFIG,$=s=>document.querySelector(s);let prods=[],imgs=[],fresh=[],editId=null,saved=false,uploading=0;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const HD=['ID','Name','Category','Brand','Model','Price','Discount Price','Stock','Description','Specifications','Image URLs','Image Public IDs','Featured','Status'];
-function toast(m,bad){const t=$('#toast');t.textContent=m;t.className=bad?'bad show':'show';setTimeout(()=>t.className='',3500);}
+let tt;function toast(m,bad){const t=$('#toast');try{t.hidePopover();}catch(e){}(document.querySelector('dialog[open]')||document.body).append(t);
+  t.innerHTML='<span></span><button aria-label="Close">×</button>';t.firstChild.textContent=m;t.className=bad?'bad':'';t.querySelector('button').onclick=()=>t.hidePopover();
+  t.showPopover();clearTimeout(tt);tt=setTimeout(()=>{try{t.hidePopover();}catch(e){}},bad?10000:3500);}
 async function api(action,data={}){
   const r=await fetch(C.API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action,token:sessionStorage.tok,...data})});
   const j=await r.json();if(j.auth===false){sessionStorage.removeItem('tok');location.reload();}if(!j.ok)throw new Error(j.error);return j.data;
