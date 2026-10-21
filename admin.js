@@ -6,21 +6,25 @@ const HD=['ID','Name','Category','Brand','Model','Price','Discount Price','Stock
 let tt;function toast(m,bad){const t=$('#toast');try{t.hidePopover();}catch(e){}(document.querySelector('dialog[open]')||document.body).append(t);
   t.innerHTML='<span></span><button aria-label="Close">×</button>';t.firstChild.textContent=m;t.className=bad?'bad':'';t.querySelector('button').onclick=()=>t.hidePopover();
   t.showPopover();clearTimeout(tt);tt=setTimeout(()=>{try{t.hidePopover();}catch(e){}},bad?10000:3500);}
+let nb=0;
 async function api(action,data={}){
-  const r=await fetch(C.API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action,token:sessionStorage.tok,...data})});
-  const j=await r.json();if(j.auth===false){sessionStorage.removeItem('tok');location.reload();}if(!j.ok)throw new Error(j.error);return j.data;
+  nb++;$('#tl').hidden=false;
+  try{const r=await fetch(C.API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action,token:sessionStorage.tok,...data})});
+    const j=await r.json();if(j.auth===false){sessionStorage.removeItem('tok');location.reload();}if(!j.ok)throw new Error(j.error);return j.data;}
+  finally{if(--nb===0)$('#tl').hidden=true;}
 }
-async function go(btn,fn){const o=btn.textContent;btn.disabled=true;btn.textContent='...';try{await fn();}catch(e){toast(e.message,1);}btn.disabled=false;btn.textContent=o;}
+async function go(btn,fn){btn.classList.add('ld');btn.disabled=true;try{await fn();}catch(e){toast(e.message,1);}btn.classList.remove('ld');btn.disabled=false;}
 $('#lb').onclick=e=>go(e.target,async()=>{$('#le').textContent='';
   try{const d=await fetch(C.API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'login',password:$('#pw').value})}).then(r=>r.json());
     if(!d.ok)throw new Error(d.error);sessionStorage.tok=d.token;start();}catch(x){$('#le').textContent=x.message;}});
 $('#pw').onkeydown=e=>{if(e.key==='Enter')$('#lb').click();};
 $('#lo').onclick=()=>{sessionStorage.removeItem('tok');location.reload();};
-function start(){$('#login').hidden=true;$('#app').hidden=false;$('#sn').textContent=C.SHOP_NAME+' – Admin';refresh().catch(e=>toast(e.message,1));}
-async function refresh(){const d=await api('stats');prods=d.products;const s=d.stats;
-  cats=Object.entries(s.categories).sort((x,y)=>y[1]-x[1]);
-  $('#st').innerHTML=`<div><b>${s.total}</b>Products</div><div><b>${s.low}</b>Low stock</div><div><b>${s.out}</b>Out of stock</div><button class="cc" id="cats"><b>${cats.length}</b>Categories · View all</button>`;
-  $('#cats').onclick=openCats;if(catF&&!cats.some(c=>c[0]===catF))catF='';setCat(catF);}
+function start(){$('#login').hidden=true;$('#app').hidden=false;$('#sn').textContent=C.SHOP_NAME+' – Admin';$('#st').innerHTML='<div class="sk" style="height:76px"></div>'.repeat(4);$('#tb').innerHTML='<tbody>'+'<tr><td colspan="7"><div class="sk" style="height:48px"></div></td></tr>'.repeat(5)+'</tbody>';refresh().catch(e=>toast(e.message,1));}
+function renderAll(){
+  const cm={};prods.forEach(p=>{const k=p.category||'Uncategorized';cm[k]=(cm[k]||0)+1;});cats=Object.entries(cm).sort((x,y)=>y[1]-x[1]);
+  $('#st').innerHTML=`<div><b>${prods.length}</b>Products</div><div><b>${prods.filter(p=>p.stock>0&&p.stock<5).length}</b>Low stock</div><div><b>${prods.filter(p=>p.stock<=0).length}</b>Out of stock</div><button class="cc" id="cats"><b>${cats.length}</b>Categories · View all</button>`;
+  $('#cats').onclick=openCats;if(catF&&!cm[catF])catF='';setCat(catF);}
+async function refresh(){const d=await api('stats');prods=d.products.slice().reverse();renderAll();}
 const money=n=>C.CURRENCY+Number(n).toLocaleString('en-IN');
 function draw(){const l=prods.filter(p=>(!catF||(p.category||'Uncategorized')===catF)&&match(p,$('#aq').value));
   $('#tb').innerHTML=l.length?'<thead><tr><th></th><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead><tbody>'+l.map(p=>
@@ -28,9 +32,9 @@ function draw(){const l=prods.filter(p=>(!catF||(p.category||'Uncategorized')===
   <td data-l="Status"><button class="pill ${p.status==='Active'?'g':''}" data-t="${esc(p.id)}" title="Click to change">${esc(p.status)}</button></td><td class="ac"><button class="btn alt" data-e="${esc(p.id)}">Edit</button> <button class="btn red" data-d="${esc(p.id)}">Delete</button></td></tr>`).join('')+'</tbody>':'<tbody><tr><td class="msg">No products yet. Click “Add product” to create one.</td></tr></tbody>';}
 $('#aq').oninput=draw;
 $('#tb').onclick=e=>{const b=e.target.closest('button');if(!b)return;const id=b.dataset.t||b.dataset.e||b.dataset.d,p=prods.find(x=>x.id===id);
-  if(b.dataset.t)go(b,async()=>{await api('toggleStatus',{id});toast('Status changed');await refresh();});
+  if(b.dataset.t)go(b,async()=>{const r=await api('toggleStatus',{id});p.status=r.status;renderAll();toast('Status changed');});
   if(b.dataset.e)openForm(p);
-  if(b.dataset.d)ask('Delete this product?',`“${p.name}” and all its images will be removed permanently.`,'Delete product').then(ok=>ok&&go(b,async()=>{await api('deleteProduct',{id});toast('Product deleted');await refresh();}));};
+  if(b.dataset.d)ask('Delete this product?',`“${p.name}” and all its images will be removed permanently.`,'Delete product').then(ok=>ok&&go(b,async()=>{const tr=b.closest('tr');tr.classList.add('busy');try{await api('deleteProduct',{id});prods=prods.filter(x=>x.id!==id);renderAll();toast('Product deleted');}finally{tr.classList.remove('busy');}}));};
 function ask(title,msg,okLabel){return new Promise(res=>{const d=$('#cf');let r=false;d.innerHTML=`<div class="dp cfm"><h3>${esc(title)}</h3><p>${esc(msg)}</p><div class="ft"><button class="btn alt" id="cn">Cancel</button><button class="btn red" id="ck">${esc(okLabel)}</button></div></div>`;d.onclose=()=>res(r);$('#ck').onclick=()=>{r=true;d.close();};$('#cn').onclick=()=>d.close();d.showModal();$('#cn').focus();});}
 $('#addb').onclick=()=>openForm(null);
 const FL=[['name','Name'],['category','Category'],['brand','Brand'],['model','Model'],['price','Price','number'],['discountPrice','Discount Price','number'],['stock','Stock','number']];
@@ -71,7 +75,9 @@ async function save(){
   const p={id:editId,specs,images:imgs.map(m=>m.url),publicIds:imgs.map(m=>m.pid)};
   [...FL.map(f=>f[0]),'featured','status','description'].forEach(k=>p[k]=$('#f_'+k).value);
   if(!p.name.trim())throw new Error('Name is required');
-  await api(editId?'updateProduct':'addProduct',{product:p});saved=true;$('#fm').close();toast('Saved');await refresh();
+  const d=await api(editId?'updateProduct':'addProduct',{product:p});saved=true;$('#fm').close();
+  if(d.product){const i=prods.findIndex(x=>x.id===d.product.id);if(i>=0)prods[i]=d.product;else prods.unshift(d.product);renderAll();}else await refresh();
+  toast(editId?'Product updated':'Product added');
 }
 // ---- bulk tools
 const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
