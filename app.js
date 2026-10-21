@@ -6,13 +6,16 @@ const money=n=>C.CURRENCY+Number(n).toLocaleString('en-IN');
 const img=(u,w)=>u?u.replace('/upload/','/upload/f_auto,q_auto,w_'+w+'/'):'';
 const eff=p=>p.discountPrice>0?p.discountPrice:p.price;
 document.title=C.SHOP_NAME;$('#sn').textContent=C.SHOP_NAME;
+let sig='';
+async function get(){const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),15000);
+  try{const r=await fetch(C.API_URL+'?action=products&_='+Date.now(),{signal:ctl.signal});const j=await r.json();if(!j.ok)throw 0;return j.data;}finally{clearTimeout(tm);}}
 async function load(){
   $('#g').innerHTML='<div class="sk"></div>'.repeat(8);
-  try{const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),15000);
-    const r=await fetch(C.API_URL+'?action=products',{signal:ctl.signal});clearTimeout(tm);
-    const j=await r.json();if(!j.ok)throw 0;P=j.data;filters();render();
-  }catch(e){$('#g').innerHTML='<div class="msg">Could not load products (server slow or offline).<br><br><button class="btn" onclick="load()">Retry</button></div>';}
+  try{P=await get();sig=JSON.stringify(P);filters();render();}
+  catch(e){$('#g').innerHTML='<div class="msg">Could not load products (server slow or offline).<br><br><button class="btn" onclick="load()">Retry</button></div>';}
 }
+async function sync(){if(document.hidden||!sig)return;try{const d=await get(),s=JSON.stringify(d);if(s!==sig){sig=s;P=d;filters();render();}}catch(e){}}
+setInterval(sync,20000);document.addEventListener('visibilitychange',sync);window.addEventListener('focus',sync);
 function opts(sel,label,arr){const v=sel.value;sel.innerHTML=`<option value="">${label}</option>`+[...new Set(arr)].filter(Boolean).sort().map(x=>`<option>${esc(x)}</option>`).join('');sel.value=v;}
 function filters(){opts($('#cat'),'All categories',P.map(p=>p.category));opts($('#br'),'All brands',P.map(p=>p.brand));}
 function render(){
@@ -28,7 +31,7 @@ function openP(id){
   const st=p.stock<=0?'<span class="pill r">Out of stock</span>':p.stock<5?`<span class="pill y">Only ${p.stock} left</span>`:'<span class="pill g">In stock</span>';
   d.innerHTML=`<button class="x" aria-label="Close" onclick="$('#d').close()">×</button><div class="pm"><div class="gl">${p.images[0]?`<img id="mi" src="${esc(img(p.images[0],900))}" alt="${esc(p.name)}">`:'<div class="ph"></div>'}${p.images.length>1?`<div class="tm">${p.images.map((u,i)=>`<img loading="lazy" class="${i?'':'on'}" src="${esc(img(u,120))}" data-f="${esc(img(u,900))}" alt="" onclick="$('#mi').src=this.dataset.f;document.querySelectorAll('.tm img').forEach(x=>x.classList.toggle('on',x===this))">`).join('')}</div>`:''}</div>
   <div class="pi"><small>${esc([p.brand,p.model].filter(Boolean).join(' · '))}</small><h2>${esc(p.name)}</h2><div><span class="price">${money(eff(p))}</span>${p.discountPrice>0?`<span class="old">${money(p.price)}</span> <span class="pill r">Save ${pc}%</span>`:''}</div><div>${st}</div>
-  ${p.description?`<p class="mu" style="margin:0">${esc(p.description)}</p>`:''}${Object.keys(p.specs||{}).length?`<table class="spec">${Object.entries(p.specs).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>`:''}
+  ${p.description?`<p class="mu" style="margin:0">${esc(p.description)}</p>`:''}${Object.keys(p.specs||{}).length?`<h3 class="sh">Specifications</h3><table class="spec">${Object.entries(p.specs).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>`:''}
   <a class="btn wa" href="${wa}" target="_blank" rel="noopener">WhatsApp Inquiry</a></div></div>`;
   d.showModal();
 }
